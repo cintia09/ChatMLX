@@ -15,8 +15,8 @@ struct MLXCommunityView: View {
     @State private var searchQuery = ""
     @State var isFetching = false
     @State var next: String?
+
     @State var status: Status = .isLoading
-    @State var sortValue: String = "downloads"
 
     private let sessionManager: Session
 
@@ -59,8 +59,6 @@ struct MLXCommunityView: View {
                 lastRowView
             }
             .scrollContentBackground(.hidden)
-            .scrollIndicatorsFlash(onAppear: true)
-            .scrollIndicatorsFlash(trigger: settingsViewModel.remoteModels.count)
         }
         .onAppear {
             Task {
@@ -70,25 +68,12 @@ struct MLXCommunityView: View {
         .ultramanNavigationTitle("MLX Community")
         .ultramanToolbar(alignment: .trailing) {
             Button(action: {
-                sortValue = "downloads"
                 Task {
                     settingsViewModel.remoteModels = []
                     await fetchModels()
                 }
             }) {
-                Image(systemName: "arrow.down.to.line.compact")
-            }
-            .disabled(isFetching)
-            .buttonStyle(.plain)
-            
-            Button(action: {
-                sortValue = "createdAt"
-                Task {
-                    settingsViewModel.remoteModels = []
-                    await fetchModels()
-                }
-            }) {
-                Image(systemName: "clock.arrow.circlepath")
+                Image(systemName: "arrow.clockwise")
             }
             .disabled(isFetching)
             .buttonStyle(.plain)
@@ -143,20 +128,17 @@ struct MLXCommunityView: View {
         return linkDict
     }
 
-    func fetchModels(search: String? = nil, retryCount: Int = 0) async {
+    func fetchModels(search: String? = nil) async {
         guard !isFetching else { return }
         isFetching = true
         status = .isLoading
-        
-        let maxRetryAttempts = 5
-        let baseDelay: TimeInterval = 1.0
 
         var urlComponents = URLComponents(
             string: "https://huggingface.co/api/models")!
         var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "limit", value: "20"),
             URLQueryItem(name: "author", value: "mlx-community"),
-            URLQueryItem(name: "sort", value: sortValue),
+            URLQueryItem(name: "sort", value: "downloads"),
             URLQueryItem(name: "pipeline_tag", value: "text-generation"),
         ]
 
@@ -182,22 +164,6 @@ struct MLXCommunityView: View {
                 status = .idle
             case .failure(let error):
                 logger.error("Failed to fetch models: \(error)")
-                
-                if retryCount < maxRetryAttempts {
-                    isFetching = false
-                    let delay = baseDelay * pow(2.0, Double(retryCount))
-                    logger.info("Retrying in \(String(format: "%.1f", delay)) seconds...")
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                        Task {
-                            await fetchModels(retryCount: retryCount + 1)
-                        }
-                    }
-                    return
-                } else {
-                    logger.error("Max retry attempts reached. Fetching models failed permanently.")
-                }
-                
                 status = .error(error.localizedDescription)
             }
             isFetching = false

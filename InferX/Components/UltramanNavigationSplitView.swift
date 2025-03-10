@@ -1,8 +1,8 @@
 //
-//  Untitled 2.swift
-//  InferX
+//  UltramanNavigationSplitView.swift
+//  ChatMLX
 //
-//  Created by mingdw on 2025/3/8.
+//  Created by John Mai on 2024/8/3.
 //
 
 import SwiftUI

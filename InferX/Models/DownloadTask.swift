@@ -13,9 +13,6 @@ import Logging
 class DownloadTask: Identifiable, Equatable {
     let logger = Logger(label: Bundle.main.bundleIdentifier!)
 
-    private let maxRetryAttempts = 5
-    private let baseDelay: TimeInterval = 1.0
-    
     static func == (lhs: DownloadTask, rhs: DownloadTask) -> Bool {
         lhs.id == rhs.id
     }
@@ -35,17 +32,15 @@ class DownloadTask: Identifiable, Equatable {
         self.repoId = repoId
     }
 
-    func start(retryCount: Int = 0) {
+    func start() {
         self.isDownloading = true
         self.error = nil
         self.progress = 0
         let currentEndpoint = Defaults[.huggingFaceEndpoint]
         self.hub = HubApi(
             downloadBase: FileManager.default.temporaryDirectory, endpoint: currentEndpoint)
-        
-        Task { [weak self] in
-            guard let self = self else { return }
-            
+
+        Task { [self] in
             do {
                 let repo = Hub.Repo(id: self.repoId)
                 let temporaryModelDirectory = try await self.hub!.snapshot(
@@ -68,25 +63,11 @@ class DownloadTask: Identifiable, Equatable {
                     self.progress = 1.0
                 }
             } catch {
-                guard self.hub != nil else { return }
                 logger.error("DownloadTask Error: \(error.localizedDescription)")
-                
-                if retryCount < maxRetryAttempts {
-                    let delay = baseDelay * pow(2.0, Double(retryCount)) // 指数退避延迟
-                    logger.info("Retrying download in \(String(format: "%.1f", delay)) seconds...") // 记录重试延迟
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { // 使用 DispatchQueue.asyncAfter 延迟执行重试
-                        self.start(retryCount: retryCount + 1) // ✅ 递归调用 start，增加 retryCount
-                    }
-                    return // 提前返回，不设置 isDownloading = false，因为重试会再次设置
-                } else {
-                    logger.error("Max retry attempts reached for download task. Download failed permanently.") // ✅ 达到最大重试次数，记录最终失败
-                }
-                
+                self.hub = nil
                 await MainActor.run {
                     self.error = error
                     self.isDownloading = false
-                    self.hub = nil
                 }
             }
         }
@@ -106,9 +87,6 @@ class DownloadTask: Identifiable, Equatable {
         let downloadBase = documents.appending(component: "huggingface").appending(path: "models")
 
         let destinationPath = downloadBase.appendingPathComponent(self.repoId)
-        
-        logger.info("Model start moved to: \(destinationPath.path)")
-        
         try fileManager.createDirectory(at: destinationPath, withIntermediateDirectories: true)
 
         if fileManager.fileExists(atPath: destinationPath.path) {
@@ -117,6 +95,6 @@ class DownloadTask: Identifiable, Equatable {
 
         try fileManager.copyItem(at: temporaryModelDirectory, to: destinationPath)
 
-        logger.info("Model end moved to: \(destinationPath.path)")
+        logger.info("Model moved to: \(destinationPath.path)")
     }
 }

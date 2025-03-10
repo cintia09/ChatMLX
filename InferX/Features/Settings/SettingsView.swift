@@ -16,7 +16,7 @@ struct SettingsView: View {
         UltramanNavigationSplitView(sidebarWidth: 220) {
             SettingsSidebarView()
         } detail: {
-            VStack {
+            Group {
                 switch vm.activeTabID {
                 case .general:
                     GeneralView()

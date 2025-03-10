@@ -7,25 +7,10 @@
 
 import SwiftUI
 
-struct HStackWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0 // 默认宽度为 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue() // 始终使用最新的宽度值
-    }
-}
-
 struct MLXCommunityItemView: View {
     @Binding var model: RemoteModel
     @Environment(SettingsViewModel.self) var settingsViewModel
 
-    var animationSpeed: Double = 40.0
-    
-    @State private var textWidth: CGFloat = 0
-    @State private var scrollOffset: CGFloat = 0
-    @State private var isAnimating = false
-    @State private var isHovering = false
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -59,7 +44,7 @@ struct MLXCommunityItemView: View {
                 Label("\(model.likes)", systemImage: "heart.fill")
                     .font(.subheadline)
                     .foregroundColor(.red.opacity(0.6))
-                
+
                 Spacer()
 
                 if let pipelineTag = model.pipelineTag {
@@ -71,11 +56,6 @@ struct MLXCommunityItemView: View {
                 }
             }
 
-            HStack {
-                Text("\(model.createdAt)")
-                    .font(.subheadline)
-            }
-            
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(model.tags, id: \.self) { tag in
@@ -86,26 +66,6 @@ struct MLXCommunityItemView: View {
                             .cornerRadius(4)
                     }
                 }
-                .fixedSize(horizontal:true, vertical: false)
-                .overlay(alignment: .leading) {
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(key: HStackWidthPreferenceKey.self, value: geometry.size.width)
-                    }
-                }
-                .offset(x: scrollOffset, y: 0)
-                .onPreferenceChange(HStackWidthPreferenceKey.self) { width in
-                    textWidth = width
-                }
-            }
-            .clipped()
-            .onHover { hovered in
-                isHovering = hovered
-                if hovered {
-                    startAnimation()
-                } else {
-                    stopAnimation()
-                }
             }
         }
         .padding()
@@ -115,25 +75,6 @@ struct MLXCommunityItemView: View {
         .shadow(color: .black, radius: 2)
     }
 
-    func startAnimation() {
-        guard !isAnimating else { return }
-        isAnimating = true
-        withAnimation(.linear(duration: animationDuration()).repeatForever(autoreverses: false)) {
-            scrollOffset = -textWidth
-        }
-    }
-
-    func stopAnimation() {
-        isAnimating = false
-        withAnimation(.linear(duration: 0.2)) {
-            scrollOffset = 0
-        }
-    }
-    
-    func animationDuration() -> Double {
-        return Double(textWidth) / animationSpeed
-    }
-    
     private func download() {
         let task = DownloadTask(model.repoId)
         task.start()
