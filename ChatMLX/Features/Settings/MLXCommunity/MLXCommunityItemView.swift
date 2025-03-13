@@ -135,7 +135,7 @@ struct MLXCommunityItemView: View {
     }
     
     private func download() {
-        let task = DownloadTask(model.repoId)
+        let task = DownloadModelTask(model.repoId)
         task.start()
 
         settingsViewModel.tasks.append(task)

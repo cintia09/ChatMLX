@@ -34,6 +34,17 @@ struct RemoteModel: Codable, Identifiable {
         case modelId
     }
 
+    private enum RepoType: String {
+        case models
+        case datasets
+        case spaces
+    }
+
+    private struct Repo {
+        let id: String
+        let type: RepoType
+    }
+        
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
@@ -59,5 +70,51 @@ struct RemoteModel: Codable, Identifiable {
                 forKey: .createdAt, in: container,
                 debugDescription: "Date string does not match expected format")
         }
+    }
+    
+    private func getFilenames(from repo: Repo, matching globs: [String] = []) async throws
+        -> [String]
+    {
+        // Read repo info and only parse "siblings"
+        let url = URL(string: "\(endpoint)/api/\(repo.type)/\(repo.id)")!
+        let (data, _) = try await httpGet(for: url)
+        let response = try JSONDecoder().decode(SiblingsResponse.self, from: data)
+        let filenames = response.siblings.map { $0.rfilename }
+        guard globs.count > 0 else { return filenames }
+
+        var selected: Set<String> = []
+        for glob in globs {
+            selected = selected.union(filenames.matching(glob: glob))
+        }
+        return Array(selected)
+    }
+    
+    func getModelURL() -> URL? {
+        let repo = Repo(id: repoId, type: .models)
+        let downloadBase: URL = FileManager.default.temporaryDirectory
+        downloadBase.appending(component: repo.type.rawValue).appending(component: repo.id)
+        
+        var source: URL {
+            // https://huggingface.co/coreml-projects/Llama-2-7b-chat-coreml/resolve/main/tokenizer.json?download=true
+            var url = URL(string: endpoint ?? "https://huggingface.co")!
+            if repo.type != .models {
+                url = url.appending(component: repo.type.rawValue)
+            }
+            url = url.appending(path: repo.id)
+            url = url.appending(path: "resolve/main")  // TODO: revisions
+            url = url.appending(path: relativeFilename)
+            return url
+        }
+
+        var destination: URL {
+            repoDestination.appending(path: relativeFilename)
+        }
+
+        var downloaded: Bool {
+            FileManager.default.fileExists(atPath: destination.path)
+        }
+        
+        let filenames = try await getFilenames(from: repoId, matching: ["*.safetensors", "*.json"])
+        return URL(string: "\(baseURL)/\(repoId)")
     }
 }

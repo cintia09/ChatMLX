@@ -151,7 +151,8 @@ extension DownloadModelTask: URLSessionDownloadDelegate {
         _: URLSession, downloadTask: URLSessionDownloadTask, didWriteData _: Int64,
         totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
     ) {
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
             self.downloadState = .downloading
             self.progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
         }
@@ -163,12 +164,14 @@ extension DownloadModelTask: URLSessionDownloadDelegate {
         do {
             try FileManager.default.moveDownloadedFile(from: location, to: self.destination)
             
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
                 self.downloadState = .completed
                 self.progress = 1.0
             }
         } catch {
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
                 self.downloadState = .failed(error)
                 logger.error("Failed to move downloaded file: \(error.localizedDescription)")
             }
@@ -178,7 +181,8 @@ extension DownloadModelTask: URLSessionDownloadDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
     {
         guard let downloadTask = task as? URLSessionDownloadTask else { return }
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
             if let error = error as? NSError {
                 if error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
                     return
@@ -202,7 +206,8 @@ extension DownloadModelTask: URLSessionDownloadDelegate {
                         
                         if Task.isCancelled { return }
                         
-                        await MainActor.run {
+                        await MainActor.run { [weak self] in
+                            guard let self = self else { return }
                             if let resumeData = self.resumeData {
                                 self.downloadTask = self.urlSession?.downloadTask(withResumeData: resumeData)
                                 self.downloadTask?.resume()
