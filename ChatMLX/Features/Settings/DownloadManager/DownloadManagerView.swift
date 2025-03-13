@@ -52,7 +52,7 @@ struct DownloadManagerView: View {
     }
 
     private func addTask() {
-        let task = DownloadTask(repoId)
+        let task = DownloadModelTask(repoId)
         task.start()
         settingsViewModel.tasks.append(task)
     }

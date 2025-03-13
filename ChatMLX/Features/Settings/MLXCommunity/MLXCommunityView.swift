@@ -47,7 +47,6 @@ struct MLXCommunityView: View {
                         await fetchModels(search: searchQuery)
                     }
                 }
-
             }
             .padding(.top)
             .padding(.horizontal)

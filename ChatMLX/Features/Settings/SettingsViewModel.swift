@@ -8,7 +8,7 @@ import SwiftUI
 
 @Observable
 class SettingsViewModel {
-    var tasks: [DownloadTask] = []
+    var tasks: [DownloadModelTask] = []
     var sidebarWidth: CGFloat = 250
     var activeTabID: SettingsTab.ID = .general
     var remoteModels: [RemoteModel] = []

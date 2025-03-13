@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct DownloadTaskView: View {
-    @Bindable var task: DownloadTask
+    @Bindable var task: DownloadModelTask
     @Environment(SettingsViewModel.self) private var settingsViewModel
 
     var body: some View {
@@ -43,13 +43,13 @@ struct DownloadTaskView: View {
 
             Spacer()
 
-            if task.isCompleted {
+            if task.downloadState == .completed {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
             } else {
-                if task.isDownloading {
+                if task.downloadState == .downloading {
                     Button(action: {
-                        task.stop()
+                        task.pauseDownload()
                     }) {
                         Image(systemName: "pause.circle")
                             .foregroundColor(.yellow)
@@ -57,7 +57,7 @@ struct DownloadTaskView: View {
                 } else {
                     HStack {
                         Button(action: {
-                            task.start()
+                            task.resumeDownload()
                         }) {
                             Image(systemName: "play.circle")
                                 .foregroundColor(.green)
