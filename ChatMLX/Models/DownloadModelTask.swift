@@ -94,6 +94,14 @@ class DownloadModelTask: NSObject, Identifiable {
             // If there's an existing pending background task with the same URL, let it proceed.
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
+                
+                if self.downloadState == .paused
+                    || self.downloadTask?.state == .canceling
+                    || self.downloadTask?.state == .completed {
+                    logger.info("Download task is paused or completed, will not attempt to resume or restart.")
+                    return
+                }
+                
                 if let existing = tasks.filter({ $0.originalRequest?.url == url }).first {
                     switch existing.state {
                     case .running:
@@ -208,6 +216,14 @@ extension DownloadModelTask: URLSessionDownloadDelegate {
                         
                         await MainActor.run { [weak self] in
                             guard let self = self else { return }
+                            
+                            if self.downloadState == .paused
+                                || self.downloadTask?.state == .canceling
+                                || self.downloadTask?.state == .completed {
+                                logger.info("Download task is paused or completed, will not attempt to resume or restart.")
+                                return
+                            }
+                            
                             if let resumeData = self.resumeData {
                                 self.downloadTask = self.urlSession?.downloadTask(withResumeData: resumeData)
                                 self.downloadTask?.resume()

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Defaults
 
 struct RemoteModel: Codable, Identifiable {
     let id: String
@@ -90,21 +91,15 @@ struct RemoteModel: Codable, Identifiable {
     }
     
     func getModelURL() -> URL? {
+        let currentEndpoint = Defaults[.huggingFaceEndpoint]
         let repo = Repo(id: repoId, type: .models)
         let downloadBase: URL = FileManager.default.temporaryDirectory
         downloadBase.appending(component: repo.type.rawValue).appending(component: repo.id)
         
-        var source: URL {
-            // https://huggingface.co/coreml-projects/Llama-2-7b-chat-coreml/resolve/main/tokenizer.json?download=true
-            var url = URL(string: endpoint ?? "https://huggingface.co")!
-            if repo.type != .models {
-                url = url.appending(component: repo.type.rawValue)
-            }
-            url = url.appending(path: repo.id)
-            url = url.appending(path: "resolve/main")  // TODO: revisions
-            url = url.appending(path: relativeFilename)
-            return url
-        }
+        var url = URL(string: currentEndpoint)
+        url.appending(repo.id)
+        url.appending(path: "resolve/main")  // TODO: revisions
+        url.appending(path: relativeFilename)
 
         var destination: URL {
             repoDestination.appending(path: relativeFilename)
