@@ -956,6 +956,9 @@
         }
       }
     },
+    "%lf" : {
+
+    },
     "%lld" : {
       "localizations" : {
         "ar" : {
@@ -1195,6 +1198,7 @@
       }
     },
     "%lld / %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {

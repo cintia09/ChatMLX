@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct HStackWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0 // 默认宽度为 0
+    static var defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue() // 始终使用最新的宽度值
+        value = nextValue()
     }
 }
 
@@ -135,9 +135,7 @@ struct MLXCommunityItemView: View {
     }
     
     private func download() {
-        let task = DownloadModelTask(model.repoId)
-        task.start()
-
+        let task = RemoteModel.downloadModel(repoId: model.repoId)
         settingsViewModel.tasks.append(task)
         settingsViewModel.activeTabID = .downloadManager
     }

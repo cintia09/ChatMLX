@@ -8,10 +8,11 @@
 import SwiftUI
 
 struct DownloadTaskView: View {
-    @Bindable var task: DownloadModelTask
+    @Bindable var taskState: DownloadStateMachine
     @Environment(SettingsViewModel.self) private var settingsViewModel
 
     var body: some View {
+        let task = taskState.downloadTask
         HStack {
             VStack {
                 HStack {
@@ -22,7 +23,7 @@ struct DownloadTaskView: View {
 
                     Spacer()
 
-                    Text("\(task.progress * 100, specifier: "%.2f")%")
+                    Text("\(taskState.progress * 100, specifier: "%.2f")%")
                         .font(.subheadline)
                         .fontWeight(.bold)
                         .frame(width: 50, alignment: .trailing)
@@ -31,25 +32,25 @@ struct DownloadTaskView: View {
                 HStack {
                     Spacer()
 
-                    Text("\(task.completedUnitCount) / \(task.totalUnitCount)")
+                    Text("\(taskState.progress)")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.7))
                 }
 
-                ProgressView(value: task.progress)
+                ProgressView(value: taskState.progress)
                     .progressViewStyle(LinearProgressViewStyle())
                     .frame(height: 4)
             }
 
             Spacer()
 
-            if task.downloadState == .completed {
+            if taskState.state == .completed {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
             } else {
-                if task.downloadState == .downloading {
+                if taskState.state == .downloading {
                     Button(action: {
-                        task.pauseDownload()
+                        task.pause()
                     }) {
                         Image(systemName: "pause.circle")
                             .foregroundColor(.yellow)
@@ -57,7 +58,7 @@ struct DownloadTaskView: View {
                 } else {
                     HStack {
                         Button(action: {
-                            task.resumeDownload()
+                            task.start()
                         }) {
                             Image(systemName: "play.circle")
                                 .foregroundColor(.green)

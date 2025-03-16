@@ -6,103 +6,255 @@
 //
 
 import Foundation
-import SwiftUI
 import Logging
 import Defaults
 import OSLog
 
+@MainActor
 @Observable
-class DownloadModelTask: NSObject, Identifiable {
-    enum DownloadState: Equatable {
-        case notStarted
+class DownloadStateMachine {
+    enum State {
+        case idle
         case downloading
         case paused
+        case canceled
         case completed
-        case failed(Error)
-        
-        static func == (lhs: DownloadState, rhs: DownloadState) -> Bool {
-            switch (lhs, rhs) {
-            case (.notStarted, .notStarted), (.downloading, .downloading),
-                 (.paused, .paused), (.completed, .completed):
-                return true
-            case (.failed, .failed):
-                return true
-            default:
-                return false
-            }
+        case failed
+    }
+    
+    let downloadTask: DownloadModelTask
+    init(_ downloadTask: DownloadModelTask) {
+        self.downloadTask = downloadTask
+    }
+    
+    var state = State.idle
+    var progress: Double = 0
+    
+    private let maxRetryAttempts = 5
+    private let baseDelay: TimeInterval = 1.0
+    private var currentRetryAttempts = 0
+    
+    func start() {
+        switch state {
+        case .idle:
+            state = .downloading
+            downloadTask.getFilenames()
+            break
+        case .paused, .failed:
+            state = .downloading
+            downloadTask.resumeDownload()
+            break
+        case .downloading, .canceled, .completed:
+            break
+        }
+        currentRetryAttempts = 0
+    }
+    
+    func pause() {
+        switch state {
+        case .downloading:
+            state = .paused
+            downloadTask.pauseDownload()
+            break
+        case .idle, .paused, .canceled, .completed, .failed:
+            break
+        }
+        currentRetryAttempts = 0
+    }
+    
+    func cancel() {
+        state = .canceled
+    }
+    
+    func filenamesGetted() {
+        switch state {
+        case .downloading:
+            downloadTask.resumeDownload()
+            break
+        case .idle, .paused, .canceled, .completed, .failed:
+            break
         }
     }
+    
+    func filenamesGetFailed() {
+        state = .idle
+    }
+    
+    func downloadCompeted(location: URL, destination: URL, isDownloadAll: Bool) {
+        if isDownloadAll {
+            state = .completed
+        } else if state == .downloading {
+            downloadTask.resumeDownload()
+        }
+        
+        FileManager.default.moveDownloadedFile(from: location, to: destination)
+    }
+    
+    func downloadErrors() {
+        switch state {
+        case .downloading:
+            if currentRetryAttempts < maxRetryAttempts {
+                currentRetryAttempts += 1
+                let delayTime = baseDelay * pow(2.0, Double(currentRetryAttempts - 1))
+                downloadTask.retriveDownload(delayTime: delayTime)
+            }
+            else {
+                state = .failed
+                currentRetryAttempts = 0
+            }
+            break
+        case .idle, .paused, .canceled, .completed, .failed:
+            break
+        }
+    }
+    
+    func downloadProgress(progress: Double) {
+        self.progress = progress
+        currentRetryAttempts = 0
+    }
+}
 
+class DownloadModelTask: NSObject, Identifiable {
     enum DownloadError: Error {
         case invalidDownloadLocation
         case unexpectedError
         case cancelled
         case networkError(underlying: Error)
     }
+   
+    private enum HubClientError: Error {
+        case parse
+        case authorizationRequired
+        case unexpectedError
+        case httpStatusCode(Int)
+    }
     
     let id = UUID()
+    let repoId: String
     private let logger = Logger(label: Bundle.main.bundleIdentifier!)
-    private let source: URL
-    private let destination: URL
+    private let globs: [String]
     private let authToken: String?
-    private let maxRetryAttempts = 5
-    private let baseDelay: TimeInterval = 1.0
-    
-    private var currentRetryAttempts = 0
-    private var urlSession: URLSession? = nil
+    private let destination: URL
+    private let source: URL
+    private let repoURL: URL
+    private let decodeData: (Data) async throws -> [String]
+    private var urlSession: URLSession?
     private var resumeData: Data?
     private var downloadTask: URLSessionDownloadTask?
+    private var downloadFiles: [(URL, URL)] = []
+    private var filenames: [String] = []
     
-    var downloadState = DownloadState.notStarted
-    var progress: Double = 0
+    var stateMachine: DownloadStateMachine?
     
     static func == (lhs: DownloadModelTask, rhs: DownloadModelTask) -> Bool {
         lhs.id == rhs.id
     }
     
-    init(
-        from url: URL, to destination: URL, using authToken: String? = nil,
-        inBackground: Bool = false
+    init(repoId: String,
+         repoURL: URL,
+         source: URL,
+         destination: URL,
+         matching globs: [String] = [],
+         using authToken: String? = nil,
+         inBackground: Bool = false,
+         decodeData: @escaping (Data) async throws -> [String]
     ) {
+        self.repoId = repoId
+        self.repoURL = repoURL
+        self.source = source
         self.destination = destination
-        self.source = url
+        self.globs = globs
         self.authToken = authToken
-        super.init()
-        let sessionIdentifier = "swift-transformers.hub.downloader"
+        self.decodeData = decodeData
 
+        super.init()
+        
         var config = URLSessionConfiguration.default
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         if inBackground {
-            config = URLSessionConfiguration.background(withIdentifier: sessionIdentifier)
+            config = URLSessionConfiguration.background(withIdentifier: "swift-transformers.hub.downloader")
             config.isDiscretionary = false
             config.sessionSendsLaunchEvents = true
         }
 
         self.urlSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
-        setupDownload(from: self.source, with: self.authToken)
     }
 
     deinit {
         self.downloadTask = nil
-        self.downloadState = .completed
         urlSession?.invalidateAndCancel()
     }
     
-    private func setupDownload(from url: URL, with authToken: String?) {
-        downloadState = .downloading
+    func getFilenames()
+    {
+        Task {
+            do {
+                let (data, _) = try await httpGet(for: repoURL, token: authToken)
+                self.filenames = try await self.decodeData(data)
+                if globs.count > 0 {
+                    var selected: Set<String> = []
+                    for glob in globs {
+                        selected = selected.union(self.filenames.matching(glob: glob))
+                    }
+                    
+                    self.filenames = Array(selected)
+                }
+                
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    for filename in self.filenames {
+                        let source = self.source.appending(path: filename)
+                        let destination = self.destination.appending(path: filename)
+                        let downloaded = FileManager.default.fileExists(atPath: destination.path)
+                        guard !downloaded else { continue }
+                        
+                        self.downloadFiles.append((source, destination))
+                    }
+                }
+            } catch {
+                await stateMachine?.filenamesGetFailed()
+            }
+            
+            await stateMachine?.filenamesGetted()
+        }
+    }
+    
+    private func httpGet(for url: URL, token: String?) async throws -> (Data, HTTPURLResponse) {
+        var request = URLRequest(url: url)
+        if let token = token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let response = response as? HTTPURLResponse else {
+            throw HubClientError.unexpectedError
+        }
+
+        switch response.statusCode {
+            case 200 ..< 300: break
+            case 400 ..< 500: throw HubClientError.authorizationRequired
+            default: throw HubClientError.httpStatusCode(response.statusCode)
+        }
+
+        return (data, response)
+    }
+    
+    private func setupDownload() {
+        if self.downloadFiles.isEmpty {
+            return
+        }
+        
         urlSession?.getAllTasks { tasks in
-            // If there's an existing pending background task with the same URL, let it proceed.
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 
-                if self.downloadState == .paused
-                    || self.downloadTask?.state == .canceling
-                    || self.downloadTask?.state == .completed {
+                if self.downloadTask?.state == .canceling || self.downloadTask?.state == .completed {
                     logger.info("Download task is paused or completed, will not attempt to resume or restart.")
                     return
                 }
                 
-                if let existing = tasks.filter({ $0.originalRequest?.url == url }).first {
+                guard let url = self.downloadFiles.first else { return }
+                let source = url.0
+                if let existing = tasks.filter({ $0.originalRequest?.url == source }).first {
                     switch existing.state {
                     case .running:
                         return
@@ -118,7 +270,7 @@ class DownloadModelTask: NSObject, Identifiable {
                     }
                 }
                 
-                var request = URLRequest(url: url)
+                var request = URLRequest(url: source)
                 if let authToken = authToken {
                     request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
                 }
@@ -135,22 +287,57 @@ class DownloadModelTask: NSObject, Identifiable {
                 guard let self = self else { return }
                 self.resumeData = resumeData
                 self.downloadTask = nil
-                self.downloadState = .paused
                 self.logger.info("Download paused, resume data saved: \(resumeData?.count ?? 0) bytes")
             }
         })
     }
     
     func resumeDownload() {
-        guard let resumeData = resumeData else {
-            setupDownload(from: source, with: authToken)
+        guard let resumeData = self.resumeData else {
+            setupDownload()
             return
         }
         
-        downloadState = .downloading
         downloadTask = urlSession?.downloadTask(withResumeData: resumeData)
         downloadTask?.resume()
         self.resumeData = nil
+    }
+    
+    func retriveDownload(delayTime: Double) {
+        Task {
+            try await Task.sleep(for: .seconds(delayTime))
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                guard let downloadTask = self.downloadTask else { return }
+                if downloadTask.state == .canceling || downloadTask.state == .completed {
+                    logger.info("Download task is paused or completed, will not attempt to resume.")
+                    return
+                }
+                self.resumeDownload()
+            }
+        }
+    }
+    
+    func createStateMachine() async {
+        await self.stateMachine = DownloadStateMachine(self)
+    }
+    
+    func start() {
+        Task {
+            await stateMachine?.start()
+        }
+    }
+    
+    func pause() {
+        Task {
+            await stateMachine?.pause()
+        }
+    }
+    
+    func cancel() {
+        Task {
+            await stateMachine?.cancel()
+        }
     }
 }
 
@@ -161,27 +348,34 @@ extension DownloadModelTask: URLSessionDownloadDelegate {
     ) {
         Task { @MainActor [weak self] in
             guard let self = self else { return }
-            self.downloadState = .downloading
-            self.progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+            stateMachine?.downloadProgress(progress: Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
         }
     }
 
     func urlSession(
         _: URLSession, downloadTask _: URLSessionDownloadTask, didFinishDownloadingTo location: URL
     ) {
-        do {
-            try FileManager.default.moveDownloadedFile(from: location, to: self.destination)
-            
-            Task { @MainActor [weak self] in
-                guard let self = self else { return }
-                self.downloadState = .completed
-                self.progress = 1.0
-            }
-        } catch {
-            Task { @MainActor [weak self] in
-                guard let self = self else { return }
-                self.downloadState = .failed(error)
-                logger.error("Failed to move downloaded file: \(error.localizedDescription)")
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            stateMachine?.downloadProgress(progress: 1.0)
+            if let originalRequest = downloadTask?.originalRequest {
+                var downloadURL: URL?
+                var indexToRemove: Int?
+                for (index, (source, destination)) in self.downloadFiles.enumerated() {
+                    if source == originalRequest.url {
+                        downloadURL = destination
+                        indexToRemove = index
+                        break
+                    }
+                }
+                
+                if let index = indexToRemove {
+                    self.downloadFiles.remove(at: index)
+                }
+                
+                self.downloadTask = nil
+                self.resumeData = nil
+                stateMachine?.downloadCompeted(location: location, destination: downloadURL!, isDownloadAll: self.downloadFiles.isEmpty)
             }
         }
     }
@@ -203,57 +397,28 @@ extension DownloadModelTask: URLSessionDownloadDelegate {
                     self.resumeData = nil
                     logger.warning("Download error occurred, but no resume data available.")
                 }
-                
-                if currentRetryAttempts < maxRetryAttempts {
-                    currentRetryAttempts += 1
-                    let delayTime = baseDelay * pow(2.0, Double(currentRetryAttempts - 1))
-                    logger.info("Download failed, retrying attempt \(currentRetryAttempts) in \(delayTime) seconds... Error: \(error.localizedDescription)")
-                    
-                    Task {
-                        try await Task.sleep(for: .seconds(delayTime))
-                        
-                        if Task.isCancelled { return }
-                        
-                        await MainActor.run { [weak self] in
-                            guard let self = self else { return }
-                            
-                            if self.downloadState == .paused
-                                || self.downloadTask?.state == .canceling
-                                || self.downloadTask?.state == .completed {
-                                logger.info("Download task is paused or completed, will not attempt to resume or restart.")
-                                return
-                            }
-                            
-                            if let resumeData = self.resumeData {
-                                self.downloadTask = self.urlSession?.downloadTask(withResumeData: resumeData)
-                                self.downloadTask?.resume()
-                                self.resumeData = nil
-                                self.downloadState = .downloading
-                            } else {
-                                self.setupDownload(from: self.source, with: self.authToken)
-                            }
-                        }
-                    }
-                } else {
-                    self.downloadState = .failed(DownloadError.networkError(underlying: error))
-                    self.downloadTask = nil
-                    logger.error("Download failed after \(maxRetryAttempts) retries. Error: \(error.localizedDescription)")
-                }
             } else if let error = error {
-                self.downloadState = .failed(error)
-                self.downloadTask = nil
                 self.resumeData = nil
                 logger.error("Download failed with unexpected error: \(error.localizedDescription)")
             }
+            
+            self.stateMachine?.downloadErrors()
         }
     }
 }
 
 extension FileManager {
-    func moveDownloadedFile(from srcURL: URL, to dstURL: URL) throws {
-        if fileExists(atPath: dstURL.path) {
-            try removeItem(at: dstURL)
+    func moveDownloadedFile(from srcURL: URL, to dstURL: URL) {
+        Task {
+            do {
+                if fileExists(atPath: dstURL.path) {
+                    try removeItem(at: dstURL)
+                }
+                try moveItem(at: srcURL, to: dstURL)
+            }
+            catch {
+                logger.error("Failed to move downloaded file: \(error.localizedDescription)")
+            }
         }
-        try moveItem(at: srcURL, to: dstURL)
     }
 }

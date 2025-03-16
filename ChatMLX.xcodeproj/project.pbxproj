@@ -52,7 +52,6 @@
 		5266765D2C85F903001EF113 /* SettingsSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676202C85F903001EF113 /* SettingsSidebarView.swift */; };
 		5266765E2C85F903001EF113 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676212C85F903001EF113 /* SettingsView.swift */; };
 		526676602C85F903001EF113 /* DisplayStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676252C85F903001EF113 /* DisplayStyle.swift */; };
-		526676612C85F903001EF113 /* DownloadTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676262C85F903001EF113 /* DownloadTask.swift */; };
 		526676622C85F903001EF113 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676272C85F903001EF113 /* Language.swift */; };
 		526676632C85F903001EF113 /* LocalModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676282C85F903001EF113 /* LocalModel.swift */; };
 		526676642C85F903001EF113 /* LocalModelGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676292C85F903001EF113 /* LocalModelGroup.swift */; };
@@ -60,8 +59,6 @@
 		526676672C85F903001EF113 /* SettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5266762C2C85F903001EF113 /* SettingsTab.swift */; };
 		526676682C85F903001EF113 /* SettingsTabGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5266762D2C85F903001EF113 /* SettingsTabGroup.swift */; };
 		526676692C85F903001EF113 /* Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5266762E2C85F903001EF113 /* Styles.swift */; };
-		5266766B2C85F903001EF113 /* Hub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676312C85F903001EF113 /* Hub.swift */; };
-		5266766C2C85F903001EF113 /* HubApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676322C85F903001EF113 /* HubApi.swift */; };
 		5266766D2C85F903001EF113 /* LLMRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676342C85F903001EF113 /* LLMRunner.swift */; };
 		5266766E2C85F903001EF113 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676352C85F903001EF113 /* Logger.swift */; };
 		526676702C85F903001EF113 /* Defaults+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526676382C85F903001EF113 /* Defaults+Extensions.swift */; };
@@ -142,7 +139,6 @@
 		526676202C85F903001EF113 /* SettingsSidebarView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingsSidebarView.swift; sourceTree = "<group>"; };
 		526676212C85F903001EF113 /* SettingsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		526676252C85F903001EF113 /* DisplayStyle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DisplayStyle.swift; sourceTree = "<group>"; };
-		526676262C85F903001EF113 /* DownloadTask.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DownloadTask.swift; sourceTree = "<group>"; };
 		526676272C85F903001EF113 /* Language.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Language.swift; sourceTree = "<group>"; };
 		526676282C85F903001EF113 /* LocalModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocalModel.swift; sourceTree = "<group>"; };
 		526676292C85F903001EF113 /* LocalModelGroup.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocalModelGroup.swift; sourceTree = "<group>"; };
@@ -150,8 +146,6 @@
 		5266762C2C85F903001EF113 /* SettingsTab.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingsTab.swift; sourceTree = "<group>"; };
 		5266762D2C85F903001EF113 /* SettingsTabGroup.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingsTabGroup.swift; sourceTree = "<group>"; };
 		5266762E2C85F903001EF113 /* Styles.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Styles.swift; sourceTree = "<group>"; };
-		526676312C85F903001EF113 /* Hub.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Hub.swift; sourceTree = "<group>"; };
-		526676322C85F903001EF113 /* HubApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HubApi.swift; sourceTree = "<group>"; };
 		526676342C85F903001EF113 /* LLMRunner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LLMRunner.swift; sourceTree = "<group>"; };
 		526676352C85F903001EF113 /* Logger.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		526676382C85F903001EF113 /* Defaults+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Defaults+Extensions.swift"; sourceTree = "<group>"; };
@@ -361,7 +355,6 @@
 			children = (
 				26FE09282D80EE4900438583 /* DownloadModelTask.swift */,
 				526676252C85F903001EF113 /* DisplayStyle.swift */,
-				526676262C85F903001EF113 /* DownloadTask.swift */,
 				526676272C85F903001EF113 /* Language.swift */,
 				52B053A12CB2F6F900E8DDBA /* AppleIntelligenceEffectDisplay.swift */,
 				526676282C85F903001EF113 /* LocalModel.swift */,
@@ -380,22 +373,12 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-		526676332C85F903001EF113 /* Huggingface */ = {
-			isa = PBXGroup;
-			children = (
-				526676312C85F903001EF113 /* Hub.swift */,
-				526676322C85F903001EF113 /* HubApi.swift */,
-			);
-			path = Huggingface;
-			sourceTree = "<group>";
-		};
 		526676372C85F903001EF113 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
 				526676342C85F903001EF113 /* LLMRunner.swift */,
 				526676352C85F903001EF113 /* Logger.swift */,
 				528D831B2CAD49E600163AAB /* PersistenceController.swift */,
-				526676332C85F903001EF113 /* Huggingface */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -548,7 +531,6 @@
 				526676592C85F903001EF113 /* DefaultConversationView.swift in Sources */,
 				52B053A02CB2C2CD00E8DDBA /* AppleIntelligenceEffectManager.swift in Sources */,
 				5266766E2C85F903001EF113 /* Logger.swift in Sources */,
-				526676612C85F903001EF113 /* DownloadTask.swift in Sources */,
 				52A689F62CAE8AAB0078CDF9 /* TimeInterval+Extensions.swift in Sources */,
 				528D83192CAD491900163AAB /* ChatMLX.xcdatamodeld in Sources */,
 				526676502C85F903001EF113 /* MessageBubbleView.swift in Sources */,
@@ -561,7 +543,6 @@
 				5266764A2C85F903001EF113 /* UltramanWindow.swift in Sources */,
 				526676702C85F903001EF113 /* Defaults+Extensions.swift in Sources */,
 				526676462C85F903001EF113 /* UltramanSecureField.swift in Sources */,
-				5266766C2C85F903001EF113 /* HubApi.swift in Sources */,
 				526676472C85F903001EF113 /* UltramanSidebarButtonStyle.swift in Sources */,
 				5266764F2C85F903001EF113 /* EmptyConversation.swift in Sources */,
 				526676572C85F903001EF113 /* MLXCommunityView.swift in Sources */,
@@ -595,7 +576,6 @@
 				526676492C85F903001EF113 /* UltramanTextField.swift in Sources */,
 				5266765E2C85F903001EF113 /* SettingsView.swift in Sources */,
 				528D831C2CAD49E600163AAB /* PersistenceController.swift in Sources */,
-				5266766B2C85F903001EF113 /* Hub.swift in Sources */,
 				5266764D2C85F903001EF113 /* ConversationSidebarView.swift in Sources */,
 				528D83372CADB64600163AAB /* ConversationViewModel.swift in Sources */,
 				5266765D2C85F903001EF113 /* SettingsSidebarView.swift in Sources */,

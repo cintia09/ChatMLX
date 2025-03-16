@@ -17,7 +17,9 @@ struct DownloadManagerView: View {
 
         List {
             ForEach(settingsViewModel.tasks) { task in
-                DownloadTaskView(task: task)
+                if let taskState = task.stateMachine {
+                    DownloadTaskView(taskState: taskState)
+                }
             }
         }
         .onChange(of: showingAlert) { _, _ in
@@ -52,8 +54,7 @@ struct DownloadManagerView: View {
     }
 
     private func addTask() {
-        let task = DownloadModelTask(repoId)
-        task.start()
+        let task = RemoteModel.downloadModel(repoId: repoId)
         settingsViewModel.tasks.append(task)
     }
 }

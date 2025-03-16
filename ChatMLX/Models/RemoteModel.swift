@@ -34,7 +34,7 @@ struct RemoteModel: Codable, Identifiable {
         case createdAt
         case modelId
     }
-
+    
     private enum RepoType: String {
         case models
         case datasets
@@ -45,7 +45,15 @@ struct RemoteModel: Codable, Identifiable {
         let id: String
         let type: RepoType
     }
-        
+
+    private struct Sibling: Codable {
+        let rfilename: String
+    }
+
+    private struct SiblingsResponse: Codable {
+        let siblings: [Sibling]
+    }
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
@@ -73,43 +81,32 @@ struct RemoteModel: Codable, Identifiable {
         }
     }
     
-    private func getFilenames(from repo: Repo, matching globs: [String] = []) async throws
-        -> [String]
-    {
-        // Read repo info and only parse "siblings"
-        let url = URL(string: "\(endpoint)/api/\(repo.type)/\(repo.id)")!
-        let (data, _) = try await httpGet(for: url)
-        let response = try JSONDecoder().decode(SiblingsResponse.self, from: data)
-        let filenames = response.siblings.map { $0.rfilename }
-        guard globs.count > 0 else { return filenames }
-
-        var selected: Set<String> = []
-        for glob in globs {
-            selected = selected.union(filenames.matching(glob: glob))
-        }
-        return Array(selected)
-    }
-    
-    func getModelURL() -> URL? {
-        let currentEndpoint = Defaults[.huggingFaceEndpoint]
+    static public func downloadModel(repoId: String) -> DownloadModelTask {
+        let globs = ["*.safetensors", "*.json"]
         let repo = Repo(id: repoId, type: .models)
         let downloadBase: URL = FileManager.default.temporaryDirectory
-        downloadBase.appending(component: repo.type.rawValue).appending(component: repo.id)
+        let destination = downloadBase.appending(component: repo.id).appending(component: repo.type.rawValue)
+        let endpoint = Defaults[.huggingFaceEndpoint]
+        let source = URL(string: endpoint)?.appendingPathComponent(repo.id).appendingPathComponent("resolve/main")
+        let repoURL = URL(string: "\(endpoint)/api/\(repo.type.rawValue)/\(repo.id)")
         
-        var url = URL(string: currentEndpoint)
-        url.appending(repo.id)
-        url.appending(path: "resolve/main")  // TODO: revisions
-        url.appending(path: relativeFilename)
-
-        var destination: URL {
-            repoDestination.appending(path: relativeFilename)
-        }
-
-        var downloaded: Bool {
-            FileManager.default.fileExists(atPath: destination.path)
+        let downloadTask = DownloadModelTask(repoId: repoId,
+                                             repoURL: repoURL!,
+                                             source: source!,
+                                             destination: destination,
+                                             matching: globs
+        ) { data in
+            let response = try JSONDecoder().decode(SiblingsResponse.self, from: data)
+            let filenames = response.siblings.map { $0.rfilename }
+            return filenames
         }
         
-        let filenames = try await getFilenames(from: repoId, matching: ["*.safetensors", "*.json"])
-        return URL(string: "\(baseURL)/\(repoId)")
+        Task {
+            await downloadTask.createStateMachine()
+            downloadTask.start()
+        }
+        
+        return downloadTask
     }
+
 }
