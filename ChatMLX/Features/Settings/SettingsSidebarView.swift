@@ -24,7 +24,7 @@ struct SettingsSidebarView: View {
         .init(.mlxCommunity, Image("MLX")),
         .init(
             .downloadManager, Image(systemName: "arrow.down.circle"),
-            showIndicator: { $0.tasks.contains { $0.stateMachine?.state == .downloading } }
+            showIndicator: { $0.tasks.contains { $0.state == .downloading } }
         ),
         .init(.experimentalFeatures, Image(systemName: "flask")),
         .init(.about, Image(systemName: "info.circle")),

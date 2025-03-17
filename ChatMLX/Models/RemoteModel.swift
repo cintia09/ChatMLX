@@ -108,5 +108,4 @@ struct RemoteModel: Codable, Identifiable {
         
         return downloadTask
     }
-
 }

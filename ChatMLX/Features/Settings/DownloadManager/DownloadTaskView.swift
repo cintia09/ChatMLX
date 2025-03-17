@@ -8,11 +8,10 @@
 import SwiftUI
 
 struct DownloadTaskView: View {
-    @Bindable var taskState: DownloadStateMachine
+    @Bindable var task: DownloadModelTask
     @Environment(SettingsViewModel.self) private var settingsViewModel
 
     var body: some View {
-        let task = taskState.downloadTask
         HStack {
             VStack {
                 HStack {
@@ -23,32 +22,42 @@ struct DownloadTaskView: View {
 
                     Spacer()
 
-                    Text("\(taskState.progress * 100, specifier: "%.2f")%")
+                    Text("\(task.progress * 100, specifier: "%.2f")%")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .frame(width: 50, alignment: .trailing)
+                        .frame(width: 100, alignment: .trailing)
                 }
 
                 HStack {
+                    Text(task.downloadingFileName)
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .frame(alignment: .trailing)
+                    
                     Spacer()
+                    
+                    Text("\(String(format: "%.2f", task.downloadedFileSize/(1024.0 * 1024.0))) / \(String(format: "%.2f", task.downloadingFileSize/(1024.0 * 1024.0))) Mbytes")
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white.opacity(0.7))
 
-                    Text("\(taskState.progress)")
+                    Text("\(task.downloadingFileNumber) / \(task.totalFiles)")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.7))
                 }
 
-                ProgressView(value: taskState.progress)
+                ProgressView(value: task.progress)
                     .progressViewStyle(LinearProgressViewStyle())
                     .frame(height: 4)
             }
 
             Spacer()
 
-            if taskState.state == .completed {
+            if task.state == .completed {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
             } else {
-                if taskState.state == .downloading {
+                if task.state == .downloading {
                     Button(action: {
                         task.pause()
                     }) {
@@ -65,9 +74,7 @@ struct DownloadTaskView: View {
                         }
 
                         Button(action: {
-                            settingsViewModel.tasks.removeAll(where: {
-                                $0.id == task.id
-                            })
+                            removeTask(task)
                         }) {
                             Image(systemName: "trash")
                                 .renderingMode(.original)
@@ -83,5 +90,10 @@ struct DownloadTaskView: View {
         .listRowSeparator(.hidden)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .shadow(color: .black, radius: 2)
+    }
+    
+    private func removeTask(_ task: DownloadModelTask) {
+        task.cancel()
+        settingsViewModel.tasks.removeAll { $0.id == task.id }
     }
 }

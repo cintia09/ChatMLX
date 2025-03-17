@@ -14,12 +14,9 @@ struct DownloadManagerView: View {
     @State var showingAlert = false
 
     var body: some View {
-
         List {
             ForEach(settingsViewModel.tasks) { task in
-                if let taskState = task.stateMachine {
-                    DownloadTaskView(taskState: taskState)
-                }
+                DownloadTaskView(task: task)
             }
         }
         .onChange(of: showingAlert) { _, _ in

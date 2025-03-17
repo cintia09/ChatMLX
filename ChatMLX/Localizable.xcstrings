@@ -718,6 +718,16 @@
     "%@" : {
 
     },
+    "%@ / %@ Mbytes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@ Mbytes"
+          }
+        }
+      }
+    },
     "%d" : {
       "localizations" : {
         "ar" : {
@@ -955,9 +965,6 @@
           }
         }
       }
-    },
-    "%lf" : {
-
     },
     "%lld" : {
       "localizations" : {
@@ -1198,7 +1205,6 @@
       }
     },
     "%lld / %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
